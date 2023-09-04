@@ -29,10 +29,10 @@ app.get("/", async (_req, res) => {
 app.post("/", async (req, res) => {
   try {
     const { title, text } = req.body;
-    await client.query(
-      `INSERT INTO todobysilviu (description) VALUES ($1);`,
-      [title, text]
-    );
+    await client.query(`INSERT INTO todobysilviu (description) VALUES ($1);`, [
+      title,
+      text,
+    ]);
     res.status(201).json({ status: "It worked" });
   } catch (error) {
     console.error(error);
