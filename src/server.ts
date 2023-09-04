@@ -28,10 +28,9 @@ app.get("/", async (_req, res) => {
 
 app.post("/", async (req, res) => {
   try {
-    const { title, text } = req.body;
+    const { description } = req.body;
     await client.query(`INSERT INTO todobysilviu (description) VALUES ($1);`, [
-      title,
-      text,
+      description,
     ]);
     res.status(201).json({ status: "It worked" });
   } catch (error) {
