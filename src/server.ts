@@ -1,84 +1,68 @@
-import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import {
-  addDummyDbItems,
-  addDbItem,
-  getAllDbItems,
-  getDbItemById,
-  DbItem,
-  updateDbItemById,
-} from "./db";
-import filePath from "./filePath";
+import express from "express";
+import { Client } from "pg";
+import { getEnvVarOrFail } from "./support/envVarUtils";
+import { setupDBClientConfig } from "./support/setupDBClientConfig";
 
-// loading in some dummy items into the database
-// (comment out if desired, or change the number)
-addDummyDbItems(20);
+dotenv.config(); //Read .env file lines as though they were env vars.
 
+const dbClientConfig = setupDBClientConfig();
+const client = new Client(dbClientConfig);
+
+//Configure express routes
 const app = express();
 
-/** Parses JSON data in a request automatically */
-app.use(express.json());
-/** To allow 'Cross-Origin Resource Sharing': https://en.wikipedia.org/wiki/Cross-origin_resource_sharing */
-app.use(cors());
+app.use(express.json()); //add JSON body parser to each following route handler
+app.use(cors()); //add CORS support to each following route handler
 
-// read in contents of any environment variables in the .env file
-dotenv.config();
-
-// use the environment variable PORT, or 4000 as a fallback
-const PORT_NUMBER = process.env.PORT ?? 4000;
-
-// API info page
-app.get("/", (req, res) => {
-  const pathToFile = filePath("../public/index.html");
-  res.sendFile(pathToFile);
-});
-
-// GET /items
-app.get("/items", (req, res) => {
-  const allSignatures = getAllDbItems();
-  res.status(200).json(allSignatures);
-});
-
-// POST /items
-app.post<{}, {}, DbItem>("/items", (req, res) => {
-  // to be rigorous, ought to handle non-conforming request bodies
-  // ... but omitting this as a simplification
-  const postData = req.body;
-  const createdSignature = addDbItem(postData);
-  res.status(201).json(createdSignature);
-});
-
-// GET /items/:id
-app.get<{ id: string }>("/items/:id", (req, res) => {
-  const matchingSignature = getDbItemById(parseInt(req.params.id));
-  if (matchingSignature === "not found") {
-    res.status(404).json(matchingSignature);
-  } else {
-    res.status(200).json(matchingSignature);
+app.get("/", async (_req, res) => {
+  try {
+    const allHistory = await client.query("SELECT * FROM todobysilviu;");
+    res.status(200).json(allHistory.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("An error has occured!");
   }
 });
 
-// DELETE /items/:id
-app.delete<{ id: string }>("/items/:id", (req, res) => {
-  const matchingSignature = getDbItemById(parseInt(req.params.id));
-  if (matchingSignature === "not found") {
-    res.status(404).json(matchingSignature);
-  } else {
-    res.status(200).json(matchingSignature);
+app.post("/", async (req, res) => {
+  try {
+    const { title, text } = req.body;
+    await client.query(
+      `INSERT INTO todobysilviu (description) VALUES ($1);`,
+      [title, text]
+    );
+    res.status(201).json({ status: "It worked" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("An error has occured!");
   }
 });
 
-// PATCH /items/:id
-app.patch<{ id: string }, {}, Partial<DbItem>>("/items/:id", (req, res) => {
-  const matchingSignature = updateDbItemById(parseInt(req.params.id), req.body);
-  if (matchingSignature === "not found") {
-    res.status(404).json(matchingSignature);
-  } else {
-    res.status(200).json(matchingSignature);
+app.get("/health-check", async (_req, res) => {
+  try {
+    //For this to be successful, must connect to db
+    await client.query("select now()");
+    res.status(200).send("system ok");
+  } catch (error) {
+    //Recover from error rather than letting system halt
+    console.error(error);
+    res.status(500).send("An error occurred. Check server logs.");
   }
 });
 
-app.listen(PORT_NUMBER, () => {
-  console.log(`Server is listening on port ${PORT_NUMBER}!`);
-});
+connectToDBAndStartListening();
+
+async function connectToDBAndStartListening() {
+  console.log("Attempting to connect to db");
+  await client.connect();
+  console.log("Connected to db!");
+
+  const port = getEnvVarOrFail("PORT");
+  app.listen(port, () => {
+    console.log(
+      `Server started listening for HTTP requests on port ${port}.  Let's go!`
+    );
+  });
+}
