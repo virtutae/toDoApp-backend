@@ -38,8 +38,21 @@ app.post("/", async (req, res) => {
     res.status(500).send("An error has occured!");
   }
 });
+////////////////////////////////////
+app.delete("/:id", async (req, res) => { 
+  try {
+    const { id } = req.params;
+    await client.query(`DELETE FROM todobysilviu WHERE id = $1;`, [id]);
+    res.status(201).json({ status: "It worked" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("An error has occured!");
+  }
+}
 
-app.get("/health-check", async (_req, res) => {
+
+//////////////////////
+,app.get("/health-check", async (_req, res) => {
   try {
     //For this to be successful, must connect to db
     await client.query("select now()");
@@ -49,7 +62,9 @@ app.get("/health-check", async (_req, res) => {
     console.error(error);
     res.status(500).send("An error occurred. Check server logs.");
   }
-});
+}));
+
+
 
 connectToDBAndStartListening();
 
