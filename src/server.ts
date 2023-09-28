@@ -40,15 +40,17 @@ app.post("/", async (req, res) => {
 });
 ////////////////////////////////////
 
-app.delete("/:id", async (req, res) => {
+app.delete("/todo_id", async (req, res) => {
   try {
-    const itemId = req.params.id;
-    await client.query("DELETE FROM todobysilviu WHERE id = $1;", [itemId]);
-    res.status(204).send();
-  } catch (error) {
-    console.error(error);
+    const itemId = req.params.todo_id;
+    console.log("Deleting item with ID, this is the console log:", itemId); 
 
-    res.status(500).send("An error has occurred!");
+    await client.query(`DELETE FROM todobysilviu WHERE todo_id = ${itemId}` );
+    res.status(204).send("Item deleted!");
+  } catch (error) {
+    console.error("the error message is:", error);
+
+    res.status(500).send("there was an error deleting the item");
   }
 });
 
